@@ -7,7 +7,7 @@
 #include<random>
 
 namespace Random{
-
+	
 	std::random_device dev;
 	std::mt19937 rng(dev());
 	std::uniform_real_distribution<> dist_uniform(0.0,1.0);

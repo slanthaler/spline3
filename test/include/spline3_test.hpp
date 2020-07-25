@@ -7,6 +7,7 @@
 #include "spline3.hpp"
 #include "regression.hpp"
 #include "io.hpp"
+#include "random.hpp"
 
 #include <math.h>
 #include <vector>
@@ -161,10 +162,6 @@ namespace{
 		ASSERT_NEAR(f[N-1],spl(x[N-1]),1e-10);
 		ASSERT_NEAR(fpL,spl.p(x[0]),1e-3);
 		ASSERT_NEAR(fpR,spl.p(x[N-1]),1e-3);
-		
-		// FIXME write to file
-		spl.WriteOut("spline.dat");
-		spl.WriteOutCoefficients("coeffs.dat");
 	};
 
 
@@ -229,6 +226,50 @@ namespace{
 							   Spline3::BCtype::clamped,fpR);
 		spl.SetSpline(x,f,bc);
 
+		//
+		dx /= 100.;
+		double x_f = x[0];
+		while(x_f < x[N-1]){
+			ASSERT_NEAR(polynomial(x_f),
+						spl(x_f),
+						1e-12);
+			x_f += dx;
+		};
+	};
+
+	// interpolation on non-equidistant grid
+	TEST_F(spline3Test, ExactInterpolationNotEquidist) {
+		Spline3::Spline3<double> spl;
+		// initialize x, f(x) = sin(x)
+		int N=0;
+		double dx = 1e-1;
+		double xnew = 0.;
+		std::vector<double> x;
+		std::vector<double> f;
+		
+		//
+		x.push_back(0.);
+		f.push_back(polynomial(0.0));
+		++N;
+		//
+		while(xnew < 1.){
+			xnew += dx*Random::uniform(0.1,1.0);
+			if(xnew > 1.) xnew = 1.;
+			x.push_back(xnew);
+			f.push_back(polynomial(xnew));
+			++N;
+		}
+		
+		// save also boundary derivative values
+		double fpL = polynomial_p(x[0]);
+		double fpR = polynomial_p(x[N-1]);
+		
+		// interpolate
+		Spline3::BC<double> bc(Spline3::BCtype::clamped,fpL,
+							   Spline3::BCtype::clamped,fpR);
+		spl.SetSpline(x,f,bc);
+		spl.WriteOut("spline.dat");
+		
 		//
 		dx /= 100.;
 		double x_f = x[0];

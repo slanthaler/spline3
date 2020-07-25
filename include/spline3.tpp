@@ -79,29 +79,55 @@ namespace Spline3{
 		switch(bc.left_type)
 		{
 		case BCtype::clamped:
-			//system.A.lower[0] = 0.;
-			system.A.diagonal[0] = 1.;
-			system.A.upper[0] = 0.;
-			system.b[0]   = bc.left_val;
+			{
+				//system.A.lower[0] = 0.;
+				system.A.diagonal[0] = 1.;
+				system.A.upper[0] = 0.;
+				system.b[0]   = bc.left_val;
+				break;
+			}
 		case BCtype::notaknot:
-			//TODO;
-			;
+			{
+				//TODO;
+				double h0 = system.h[0];
+				double h1 = system.h[1];
+				T s0 = system.s[0];
+				T s1 = system.s[1];
+				//
+				system.A.diagonal[0] = 1./h0;
+				system.A.upper[0] = (h0+h1)/(h0*h1);
+				system.b[0] = ( (3*h0+2*h1)*s0/h0 + h0*s1/h1 )/(h0+h1);
+				break;
+			}
 	    default:
 			//TODO [error]
-			;
+			std::cout << "THIS SHOULD PRODUCE AN ERROR: bc(left) not recognized";
 		}
 		switch(bc.right_type)
 		{
 		case BCtype::clamped:
-			system.A.lower[N]    = 0.;
-			system.A.diagonal[N] = 1.;
-			system.b[N]          = bc.right_val;
+			{
+				system.A.lower[N]    = 0.;
+				system.A.diagonal[N] = 1.;
+				system.b[N]          = bc.right_val;
+				break;
+			}
 		case BCtype::notaknot:
-			//TODO
-			;
+			{
+				//TODO;
+				double hN2 = system.h[N-2];
+				double hN1 = system.h[N-1];
+				T sN2 = system.s[N-2];
+				T sN1 = system.s[N-1];
+				//
+				system.A.diagonal[N] = 1./hN1;
+				system.A.lower[N] = (hN2+hN1)/(hN2*hN1);
+				system.b[N] = ( (3*hN1+2*hN2)*sN1/hN1 + hN1*sN2/hN2 )/(hN2+hN1);
+				break;
+			}
 		default:
 			//TODO [error]
-			;
+			std::cout << "THIS SHOULD PRODUCE AN ERROR: bc(right) not recognized";
 		}
 	};
 

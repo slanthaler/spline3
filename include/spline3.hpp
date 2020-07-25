@@ -33,6 +33,10 @@ namespace Spline3{
 		BCtype left_type, right_type;
 		T left_val, right_val;
 
+		/* 
+		   constructor
+		*/
+		// BC with values
 		BC(BCtype left_t,  T left_v,
 		   BCtype right_t, T right_v):
 			left_type(left_t),
@@ -40,7 +44,27 @@ namespace Spline3{
 			right_type(right_t),
 			right_val(right_v)
 		{};
-		
+		// BC without values
+		BC(BCtype left_t,
+		   BCtype right_t):
+			left_type(left_t),
+			right_type(right_t)
+		{};
+		// BC without values -- left
+		BC(BCtype left_t,
+		   BCtype right_t, T right_v):
+			left_type(left_t),
+			right_type(right_t),
+			right_val(right_v)
+		{};
+		// BC wihtout values -- right
+		BC(BCtype left_t,  T left_v,
+		   BCtype right_t):
+			left_type(left_t),
+			left_val(left_v),
+			right_type(right_t)
+		{};
+
 	};
 
 	/*

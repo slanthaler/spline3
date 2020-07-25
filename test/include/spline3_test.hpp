@@ -5,6 +5,8 @@
 #pragma once
 #include "gtest/gtest.h"
 #include "spline3.hpp"
+#include "regression.hpp"
+#include "io.hpp"
 
 #include <math.h>
 #include <vector>
@@ -17,13 +19,21 @@ namespace{
 	
 	class spline3Test : public ::testing::Test{ 
 	protected:
-		const int N=20;
+		int N;
 		array x,f;
 		double fpL,fpR;
 		Spline3::Spline3<double> spl;
 		
 		spline3Test(){
+			N = 20;
+			interpolate_on_grid(N,
+								Spline3::BCtype::clamped,
+								Spline3::BCtype::clamped);
+		}
+
+		void interpolate_on_grid(int Nin, Spline3::BCtype bcL, Spline3::BCtype bcR){
 			// initialize x, f(x) = sin(x)
+			N = Nin;
 			double dx = 1./double(N-1);
 			x.resize(N);
 			f.resize(N);
@@ -37,14 +47,48 @@ namespace{
 			fpR = fun_p(x[N-1]);
 
 			// interpolate
-			Spline3::BC<double> bc(Spline3::BCtype::clamped,fpL,
-								   Spline3::BCtype::clamped,fpR);
+			Spline3::BC<double> bc(bcL,fpL,bcR,fpR);
 			spl.SetSpline(x,f,bc);
-
-			// FIXME write to file
-			spl.WriteOut("spline.dat");
-			spl.WriteOutCoefficients("coeffs.dat");
+			
 		}
+
+		double get_max_error(){
+			double dx = 1e-5;
+			double xx = x[0];
+			double err = 0;
+			
+			while(xx < x[N-1]){
+				err = std::max(err, std::abs(fun(xx)-spl(xx)));
+				xx += dx;
+			}
+			return err;
+		}
+
+		double get_mean_error(){
+			double dx = 1e-5;
+			double xx = x[0];
+			double err = 0;
+			
+			while(xx < x[N-1]){
+				err += std::abs(fun(xx)-spl(xx))*dx;
+				xx += dx;
+			}
+			return err/(x[N-1]-x[0]);
+		}
+
+		double convergence_rate(std::vector<int> Nvals,
+								std::vector<double> error){
+			std::vector<double> h;
+			for(int i=0; i<Nvals.size(); ++i){
+				h.push_back(1./(double) Nvals[i]);
+				// take the log!
+				h[i] = std::log(h[i]);
+				error[i] = std::log(error[i]);
+			}
+			
+			return regression::slope(h,error);
+		}
+		
 	};
 
 
@@ -106,7 +150,53 @@ namespace{
 	};
 
 
+	TEST_F(spline3Test, NotAKnotBC){
+		// interpolate with not-a-knot BC
+		interpolate_on_grid(100,
+							Spline3::BCtype::notaknot,
+							Spline3::BCtype::notaknot);
 
+		//
+		ASSERT_NEAR(f[0],spl(x[0]),1e-10);
+		ASSERT_NEAR(f[N-1],spl(x[N-1]),1e-10);
+		ASSERT_NEAR(fpL,spl.p(x[0]),1e-3);
+		ASSERT_NEAR(fpR,spl.p(x[N-1]),1e-3);
+		
+		// FIXME write to file
+		spl.WriteOut("spline.dat");
+		spl.WriteOutCoefficients("coeffs.dat");
+	};
+
+
+	/*
+	  Expected order of convergence is 4.
+	 */
+	TEST_F(spline3Test, ConvergenceTest){
+		std::vector<int> Nvals;
+		std::vector<double> max_error, mean_error;
+		for(int N=10; N<5000; N*=2){
+			Spline3::BCtype bcL = Spline3::BCtype::notaknot;
+			Spline3::BCtype bcR = Spline3::BCtype::notaknot;
+			interpolate_on_grid(N,bcL,bcR);
+			//
+			Nvals.push_back(N);
+			max_error.push_back( get_max_error() );
+			mean_error.push_back( get_mean_error() );
+		}
+
+		IO::write("max_error.dat", max_error);
+		IO::write("mean_error.dat", mean_error);
+
+		double pmax  = convergence_rate(Nvals,max_error);
+		double pmean = convergence_rate(Nvals,mean_error);
+
+	    EXPECT_GT(pmax,3.8);
+	    EXPECT_GT(pmean,3.8);
+
+		std::cout << "convergence rate: " << "pmax  = " << pmax << "\n";
+		std::cout << "                  " << "pmean = " << pmean << "\n";
+	};
+	
 	
 	inline double polynomial(double x)
 	{
